@@ -20,6 +20,8 @@ public class MerchaPlayer
 	boolean PASS_INFLATE = false;
 	boolean ADD_DEPTH = true;
 	
+	boolean initialized = false;
+	
 	public void init(OthelloSide paramOthelloSide)
 	{
 		this.side = paramOthelloSide;
@@ -28,11 +30,37 @@ public class MerchaPlayer
 		} else {
 			this.opponentSide = OthelloSide.BLACK;
 		}
-		System.out.println("MERCHA IS "+this.side+" {"+MONTE_RUNS+","+INFLATION_FACTOR+","+SCORE_WEIGHT+","+WINS_WEIGHT+","+REPROX_WEIGHT+","+INIT_INFLATE+","+ALPHA_DEPTH+","+PASS_INFLATE+","+ADD_DEPTH+"}");
 	}
 	
 	public Move doMove(Move paramMove, long paramLong)
 	{
+		if(!initialized){
+			if(paramLong > 30000){
+				MONTE_RUNS = 40;
+				INFLATION_FACTOR = 2.0f;
+				SCORE_WEIGHT = 1.5f;
+				WINS_WEIGHT = 0.4f;
+				REPROX_WEIGHT = 5f+INFLATION_FACTOR*1.1f;
+				INIT_INFLATE = true;
+				ALPHA_DEPTH = 4;
+				PASS_INFLATE = true;
+				ADD_DEPTH = true;
+			} else {
+				MONTE_RUNS = 14;
+				INFLATION_FACTOR = 2.0f;
+				SCORE_WEIGHT = 1.5f;
+				WINS_WEIGHT = 0.4f;
+				REPROX_WEIGHT = 5f+INFLATION_FACTOR*1.1f;
+				INIT_INFLATE = true;
+				ALPHA_DEPTH = 3;
+				PASS_INFLATE = false;
+				ADD_DEPTH = true;
+			}
+			initialized = true;
+			System.out.println("MERCHA IS "+this.side+" {"+MONTE_RUNS+","+INFLATION_FACTOR+","+SCORE_WEIGHT+","+WINS_WEIGHT+","+REPROX_WEIGHT+","+INIT_INFLATE+","+ALPHA_DEPTH+","+PASS_INFLATE+","+ADD_DEPTH+"}");
+		}
+		
+		
 		if (paramMove != null) {
 			this.board.move(paramMove, this.opponentSide);
 		}
@@ -63,12 +91,14 @@ public class MerchaPlayer
 		
 		int pieces = this.board.taken.cardinality();
 		
+		int dDepth = 0;
+		if(paramLong < 5000){
+			INFLATION_FACTOR = 1.0f;
+			dDepth++;
+		}
 		
-		if(pieces <= 48){
-			if(paramLong < 5000){
-				INFLATION_FACTOR = 1.0f;
-			}
-			float confidence = alphaBeta(ALPHA_DEPTH, this.board, this.side, -1e30f, 1e30f, 1f, true, INIT_INFLATE, ADD_DEPTH);
+		if(pieces <= 46){
+			float confidence = alphaBeta(ALPHA_DEPTH-dDepth, this.board, this.side, -1e30f, 1e30f, 1f, true, INIT_INFLATE, ADD_DEPTH);
 			//System.out.println("Expected = "+confidence);
 			return abBestMove;
 		} else {
@@ -77,18 +107,18 @@ public class MerchaPlayer
 			
 			float confidence;
 			
-			if(tEstimate <= 80000 && paramLong > 6000){
+			if(tEstimate <= 80000 && paramLong > 10000){
 				confidence = solve(this.board, this.side, -1e30f, 1e30f, true, 0, false);
-				System.out.println("Solve A");
+				System.out.println("[M]Solve A");
 			}else if(pieces > 52){
 				confidence = solve(this.board, this.side, -1e30f, 1e30f, true, 0, false);
-				System.out.println("Solve B");
+				System.out.println("[M]Solve B");
 			}else{
-				confidence = alphaBeta(ALPHA_DEPTH, this.board, this.side, -1e30f, 1e30f, 1f, true, INIT_INFLATE, ADD_DEPTH);
-				System.out.println("Solve C");
+				confidence = alphaBeta(ALPHA_DEPTH-dDepth, this.board, this.side, -1e30f, 1e30f, 1f, true, INIT_INFLATE, ADD_DEPTH);
+				System.out.println("[M]Solve C");
 			}
 			
-			System.out.println("Expected = "+confidence);
+			System.out.println("[M]Expected = "+confidence);
 			return abBestMove;
 		}
 
